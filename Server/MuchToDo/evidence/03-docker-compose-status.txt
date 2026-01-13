@@ -1,0 +1,4 @@
+NAME               IMAGE              COMMAND                  SERVICE   CREATED         STATUS                   PORTS
+muchtodo-api       muchtodo-backend   "./docker-entrypoint…"   backend   4 minutes ago   Up 4 minutes (healthy)   0.0.0.0:8080->8080/tcp, [::]:8080->8080/tcp
+muchtodo-mongodb   mongo:8.0          "docker-entrypoint.s…"   mongodb   4 minutes ago   Up 4 minutes (healthy)   0.0.0.0:27017->27017/tcp, [::]:27017->27017/tcp
+muchtodo-redis     redis:7.2-alpine   "docker-entrypoint.s…"   redis     4 minutes ago   Up 4 minutes (healthy)   0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp

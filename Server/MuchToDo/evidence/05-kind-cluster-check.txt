@@ -1,0 +1,126 @@
+--: kind: command not found
+==> Auto-updating Homebrew...
+Adjust how often this is run with `$HOMEBREW_AUTO_UPDATE_SECS` or disable with
+`$HOMEBREW_NO_AUTO_UPDATE=1`. Hide these hints with `$HOMEBREW_NO_ENV_HINTS=1` (see `man brew`).
+==> Auto-updated Homebrew!
+Updated 3 taps (hashicorp/tap, homebrew/core and homebrew/cask).
+==> New Formulae
+adplay: Command-line player for OPL2 music
+any2fasta: Convert various sequence formats to FASTA
+av1an: Cross-platform command-line encoding framework
+azurite: Lightweight server clone of Azure Storage that simulates it locally
+beads: Memory upgrade for your coding agent
+beads_viewer: Terminal-based UI for the Beads issue tracker
+bookokrat: Terminal EPUB Book Reader
+ccextractor: Tool for extracting closed captions from video files
+cek: Explore the (overlay) filesystem and layers of OCI container images
+cinecli: Browse, inspect, and launch movie torrents directly from your terminal
+classifier: Text classification with Bayesian, LSI, Logistic Regression, and kNN
+codanna: Code intelligence system with semantic search
+cronboard: Terminal-based dashboard for managing cron jobs locally and on servers
+ctags-lsp: LSP implementation using universal-ctags as backend
+dotnet@9: .NET Core
+gastown: Multi-agent workspace manager
+ghc@9.12: Glorious Glasgow Haskell Compilation System
+global-arrays: Partitioned Global Address Space (PGAS) library for distributed arrays
+graphqlite: SQLite graph database extension
+headscale-cli: CLI for headscale, an open-source implementation of the Tailscale control server
+headson: Head/tail for structured data
+helix-db: Open-source graph-vector database built from scratch in Rust
+hindent: Haskell pretty printer
+jsonfmt: Like gofmt, but for JSON files
+karakeep: CLI tool for self-hostable bookmark-everything app karakeep
+khaos: Kafka traffic simulator for observability and chaos engineering
+kyua: Testing framework for infrastructure software
+ladybug: Embedded graph database built for query speed and scalability
+leetsolv: CLI tool for DSA problem revision with spaced repetition
+libevdev: Wrapper library for evdev devices
+lispkit: Scheme framework for extension and scripting languages on macOS and iOS
+macchanger: Change your mac address, for macOS
+minizign: Minisign reimplemented in Zig
+mole: Deep clean and optimize your Mac
+oxfmt: High-performance formatting tool for JavaScript and TypeScript
+pake: Turn any webpage into a desktop app with Rust with ease
+patchpal: AI Assisted Patch Backporting Tool Frontend
+pixlet: App runtime and UX toolkit for pixel-based apps
+pony-language-server: Language server for Pony
+pvetui: Terminal UI for Proxmox VE
+qo: Interactive minimalist TUI to query JSON, CSV, and TSV using SQL
+ruby@3.4: Powerful, clean, object-oriented scripting language
+snitch: Prettier way to inspect network connections
+svu: Semantic version utility
+topydo: Todo list application using the todo.txt format
+witr: Why is this running?
+==> New Casks
+ausweisapp: Official eID-Client of the Federal Government of Germany
+aya: Android ADB desktop app
+clipaste: Clipboard history manager
+crypto-native-app-ng: Encrypts and signs data on your computer and communicates with browser extension
+excire-search: Lightroom Classic plugin with automatic keywording and advanced search
+font-kikai-chokoku-jis
+fork@dev: Git client
+glide: Tiling window manager with tree layouts
+gonhanh: Vietnamese input method engine
+kitlangton-hex: Voice-to-text transcription and paste tool
+kubeterm: Kubernetes graphical management tool
+macdown-3000: Markdown editor with live preview and syntax highlighting
+maru-jan: Play japanese mahjong online
+mstystudio: AI platform with local and online models
+nani: AI-powered translator
+novation-components: Manager and updater for Novation hardware
+novation-play: Virtual instrument for Novation Launchkey MK4 hardware
+portalbox: Share a region of your screen in video calls
+sourcegit: Git GUI client
+taphouse: Native GUI for Homebrew package management
+typeless: AI voice dictation that turns speech into polished text
+vcamapp: Face-tracking virtual avatar app
+waveforms: Virtual instrument suite for Digilent Test and Measurement devices
+wireless-workbench: Desktop app for RF coordination and wireless system management
+wispr-flow: Voice-to-text dictation with AI-powered auto-editing
+yingfu-online: Education app for teens
+zedis: Redis Client
+
+You have 6 outdated formulae installed.
+
+==> Fetching downloads for: kind
+✔︎ Bottle Manifest kind (0.31.0)
+✔︎ Bottle kind (0.31.0)
+==> Pouring kind--0.31.0.sonoma.bottle.1.tar.gz
+🍺  /usr/local/Cellar/kind/0.31.0: 10 files, 10.5MB
+==> Running `brew cleanup kind`...
+Disable this behaviour by setting `HOMEBREW_NO_INSTALL_CLEANUP=1`.
+Hide these hints with `HOMEBREW_NO_ENV_HINTS=1` (see `man brew`).
+==> `brew cleanup` has not been run in the last 30 days, running now...
+Disable this behaviour by setting `HOMEBREW_NO_INSTALL_CLEANUP=1`.
+Hide these hints with `HOMEBREW_NO_ENV_HINTS=1` (see `man brew`).
+Removing: /usr/local/Cellar/ca-certificates/2024-07-02... (4 files, 236.9KB)
+Removing: /usr/local/Cellar/gettext/0.21.1... (1,983 files, 21.6MB)
+Removing: /usr/local/Cellar/lz4/1.9.4... (22 files, 701.6KB)
+Removing: /usr/local/Cellar/mpdecimal/4.0.0... (21 files, 627.9KB)
+Removing: /usr/local/Cellar/openssl@3/3.3.1... (6,982 files, 34.4MB)
+Removing: /usr/local/Cellar/zstd/1.5.6... (31 files, 2.4MB)
+==> Autoremoving 1 unneeded formula:
+libevent
+Uninstalling /usr/local/Cellar/libevent/2.1.12_1... (57 files, 2.1MB)
+Removing: /Users/nicholasoyathekhua/Library/Caches/Homebrew/portable-ruby-3.4.7.catalina.bottle.tar.gz... (11.9MB)
+Removing: /Users/nicholasoyathekhua/Library/Caches/Homebrew/api-source/Homebrew/homebrew-cask/0ccd4f42051cbeebb1350d80b46b570b0c9aa969/Cask/docker-desktop.rb... (5.1KB)
+Removing: /Users/nicholasoyathekhua/Library/Caches/Homebrew/bootsnap/15bfd0eb5bf652aaa1cc513d5b9a891eaf54c382da86a78e3ff20214aa23604e... (645 files, 5.6MB)
+Removing: /Users/nicholasoyathekhua/Library/Caches/Homebrew/bootsnap/2fe7d830920ac59b7995d46b4bf0fb06801ffc41681547eca2913118bfdcdc6b... (650 files, 5.7MB)
+Removing: /Users/nicholasoyathekhua/Library/Caches/Homebrew/bootsnap/f40d4bc638273396f948980a9975781cfb88b233f4ee4a48cbd521f2abf49a18... (651 files, 5.7MB)
+Removing: /Users/nicholasoyathekhua/Library/Logs/Homebrew/openssl@3... (64B)
+Removing: /Users/nicholasoyathekhua/Library/Logs/Homebrew/ca-certificates... (64B)
+Removing: /usr/local/var/homebrew/tmp/.cellar/ncurses... (4,050 files, 9.7MB)
+Removing: /usr/local/var/homebrew/tmp/.cellar/mpdecimal... (21 files, 575KB)
+Removing: /usr/local/var/homebrew/tmp/.cellar/libunistring... (58 files, 5.8MB)
+Removing: /usr/local/var/homebrew/tmp/.cellar/readline... (55 files, 2.6MB)
+Removing: /usr/local/var/homebrew/tmp/.cellar/lz4... (23 files, 710.6KB)
+Removing: /usr/local/var/homebrew/tmp/.cellar/sqlite... (12 files, 5.1MB)
+Removing: /usr/local/var/homebrew/tmp/.cellar/xz... (95 files, 2.4MB)
+Removing: /usr/local/var/homebrew/tmp/.cellar/openssl@3... (7,608 files, 38MB)
+Removing: /usr/local/var/homebrew/tmp/.cellar/ca-certificates... (3 files, 234KB)
+Removing: /usr/local/var/homebrew/tmp/.cellar/gettext... (2,427 files, 28.3MB)
+Removing: /usr/local/var/homebrew/tmp/.cellar/zstd... (31 files, 2.5MB)
+Pruned 0 symbolic links and 2 directories from /usr/local
+==> Caveats
+Bash completion has been installed to:
+  /usr/local/etc/bash_completion.d

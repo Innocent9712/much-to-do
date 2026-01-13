@@ -1,0 +1,4 @@
+configmap/backend-configmap created
+deployment.apps/backend created
+secret/backend-secret created
+service/backend-service created

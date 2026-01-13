@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-configmap
+  namespace: muchtodo
+  labels:
+    app.kubernetes.io/name: backend
+    app.kubernetes.io/component: api
+    app.kubernetes.io/part-of: muchtodo-application
+data:
+  PORT: "8080"
+  DB_NAME: "much_todo_db"
+  JWT_EXPIRATION_HOURS: "72"
+  ENABLE_CACHE: "false"
+  REDIS_ADDR: ""
+  LOG_LEVEL: "info"
+  LOG_FORMAT: "json"

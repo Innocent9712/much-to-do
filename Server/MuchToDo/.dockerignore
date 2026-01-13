@@ -1,0 +1,71 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Build artifacts
+bin/
+dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test files
+*_test.go
+*.test
+coverage.out
+coverage.html
+
+# Documentation (keep swagger docs for API documentation)
+*.md
+!README.md
+
+# Docker files (prevent recursive copying)
+Dockerfile*
+docker-compose*.yml
+docker-compose*.yaml
+.docker/
+
+# Kubernetes manifests
+kubernetes/
+k8s/
+
+# Scripts
+scripts/
+
+# Environment files
+.env
+.env.*
+*.env
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.log
+
+# MongoDB keyfile (security - should be generated)
+mongodb.key
+
+# Test containers and mock data
+testdata/
+mocks/
+
+# Makefile (not needed in container)
+Makefile
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.circleci/
+Jenkinsfile

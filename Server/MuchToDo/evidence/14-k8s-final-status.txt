@@ -1,0 +1,33 @@
+Name:             muchtodo-ingress
+Labels:           app.kubernetes.io/component=ingress
+                  app.kubernetes.io/name=muchtodo-ingress
+                  app.kubernetes.io/part-of=muchtodo-application
+Namespace:        muchtodo
+Address:          localhost
+Ingress Class:    nginx
+Default backend:  <default>
+Rules:
+  Host            Path  Backends
+  ----            ----  --------
+  muchtodo.local  
+                  /   backend-service:8080 (10.244.0.12:8080,10.244.0.13:8080)
+  *               
+                  /api       backend-service:8080 (10.244.0.12:8080,10.244.0.13:8080)
+                  /health    backend-service:8080 (10.244.0.12:8080,10.244.0.13:8080)
+                  /ping      backend-service:8080 (10.244.0.12:8080,10.244.0.13:8080)
+                  /swagger   backend-service:8080 (10.244.0.12:8080,10.244.0.13:8080)
+Annotations:      nginx.ingress.kubernetes.io/cors-allow-headers:
+                    DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization
+                  nginx.ingress.kubernetes.io/cors-allow-methods: GET, POST, PUT, DELETE, PATCH, OPTIONS
+                  nginx.ingress.kubernetes.io/cors-allow-origin: *
+                  nginx.ingress.kubernetes.io/enable-cors: true
+                  nginx.ingress.kubernetes.io/proxy-body-size: 10m
+                  nginx.ingress.kubernetes.io/proxy-connect-timeout: 30
+                  nginx.ingress.kubernetes.io/proxy-read-timeout: 30
+                  nginx.ingress.kubernetes.io/proxy-send-timeout: 30
+                  nginx.ingress.kubernetes.io/rewrite-target: /
+                  nginx.ingress.kubernetes.io/ssl-redirect: false
+Events:
+  Type    Reason  Age                    From                      Message
+  ----    ------  ----                   ----                      -------
+  Normal  Sync    5m14s (x2 over 5m49s)  nginx-ingress-controller  Scheduled for sync

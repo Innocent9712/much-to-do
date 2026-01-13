@@ -1,0 +1,5 @@
+configmap/mongodb-configmap created
+deployment.apps/mongodb created
+persistentvolumeclaim/mongodb-pvc created
+secret/mongodb-secret created
+service/mongodb-service created

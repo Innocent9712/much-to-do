@@ -1,0 +1,147 @@
+services:
+  # ============================================
+  # Backend API Service
+  # ============================================
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: muchtodo-api
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8080}:8080"
+    environment:
+      PORT: "8080"
+      MONGO_URI: "mongodb://root:example@mongodb:27017/much_todo_db?authSource=admin&replicaSet=rs0&directConnection=true"
+      DB_NAME: "much_todo_db"
+      JWT_SECRET_KEY: "${JWT_SECRET_KEY:-your-super-secret-jwt-key-change-in-production}"
+      JWT_EXPIRATION_HOURS: "${JWT_EXPIRATION_HOURS:-72}"
+      ENABLE_CACHE: "${ENABLE_CACHE:-true}"
+      REDIS_ADDR: "redis:6379"
+      REDIS_PASSWORD: "${REDIS_PASSWORD:-}"
+      LOG_LEVEL: "${LOG_LEVEL:-info}"
+      LOG_FORMAT: "${LOG_FORMAT:-json}"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - muchtodo-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ============================================
+  # MongoDB Database Service
+  # ============================================
+  mongodb:
+    image: mongo:8.0
+    container_name: muchtodo-mongodb
+    restart: unless-stopped
+    ports:
+      - "${MONGO_PORT:-27017}:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-root}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-example}
+      MONGO_INITDB_DATABASE: ${DB_NAME:-much_todo_db}
+    command:
+      [
+        "--replSet",
+        "rs0",
+        "--bind_ip_all",
+        "--keyFile",
+        "/data/keyfile/mongodb.key",
+      ]
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+      - ./mongodb.key:/data/keyfile/mongodb.key:ro
+    healthcheck:
+      test: echo "try { rs.status() } catch (err) { rs.initiate({_id:'rs0',members:[{_id:0,host:'mongodb:27017'}]}) }" | mongosh --port 27017 -u ${MONGO_USER:-root} -p ${MONGO_PASSWORD:-example} --authenticationDatabase admin --quiet
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    networks:
+      - muchtodo-network
+
+  # ============================================
+  # Redis Cache Service
+  # ============================================
+  redis:
+    image: redis:7.2-alpine
+    container_name: muchtodo-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - muchtodo-network
+
+  # ============================================
+  # Mongo Express (Development UI)
+  # ============================================
+  mongo-express:
+    image: mongo-express:1.0.2
+    container_name: muchtodo-mongo-express
+    restart: unless-stopped
+    profiles:
+      - dev
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_URL: mongodb://${MONGO_USER:-root}:${MONGO_PASSWORD:-example}@mongodb:27017/?authSource=admin&replicaSet=rs0&directConnection=true
+      ME_CONFIG_BASICAUTH_USERNAME: ${ME_CONFIG_BASICAUTH_USERNAME:-admin}
+      ME_CONFIG_BASICAUTH_PASSWORD: ${ME_CONFIG_BASICAUTH_PASSWORD:-admin123}
+    networks:
+      - muchtodo-network
+
+  # ============================================
+  # Redis Commander (Development UI)
+  # ============================================
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: muchtodo-redis-commander
+    restart: unless-stopped
+    profiles:
+      - dev
+    depends_on:
+      - redis
+    ports:
+      - "8082:8081"
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    networks:
+      - muchtodo-network
+
+# ============================================
+# Named Volumes for Data Persistence
+# ============================================
+volumes:
+  mongodb_data:
+    driver: local
+  mongodb_config:
+    driver: local
+  redis_data:
+    driver: local
+
+# ============================================
+# Network Configuration
+# ============================================
+networks:
+  muchtodo-network:
+    driver: bridge

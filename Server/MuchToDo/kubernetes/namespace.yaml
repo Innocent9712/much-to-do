@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: muchtodo
+  labels:
+    app.kubernetes.io/name: muchtodo
+    app.kubernetes.io/part-of: muchtodo-application
