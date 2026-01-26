@@ -373,29 +373,9 @@ This project is licensed under the MIT License.
 
 ---
 
-## 👥 Team
-
-**StartTech DevOps Team**
-
-- DevOps Lead: devops@starttech.com
-- Backend Team: backend@starttech.com
-- Frontend Team: frontend@starttech.com
-
----
-
 ## 🔗 Related Repositories
 
 - **Infrastructure Repository**: `starttech-infra` (Terraform configurations)
-
----
-
-## 📞 Support
-
-For issues and questions:
-
-- Create an issue in this repository
-- Contact: oncall@starttech.com
-- AWS Support: https://console.aws.amazon.com/support/
 
 ---
 
