@@ -1,0 +1,201 @@
+name: Backend CI/CD
+
+on:
+    push:
+        branches:
+            - main
+            - develop
+        paths:
+            - "Server/**"
+            - ".github/workflows/backend-ci-cd.yml"
+    pull_request:
+        branches:
+            - main
+            - develop
+        paths:
+            - "Server/**"
+
+permissions:
+    id-token: write
+    contents: read
+
+env:
+    GO_VERSION: "1.21"
+
+jobs:
+    test:
+        name: Test & Lint
+        runs-on: ubuntu-latest
+        defaults:
+            run:
+                working-directory: Server/MuchToDo
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Setup Go
+              uses: actions/setup-go@v5
+              with:
+                  go-version: ${{ env.GO_VERSION }}
+                  cache-dependency-path: Server/MuchToDo/go.sum
+
+            - name: Install dependencies
+              run: go mod download
+
+            - name: Run tests
+              run: go test -v -race -coverprofile=coverage.out ./...
+
+            - name: Check code formatting
+              run: |
+                  if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
+                    echo "Code formatting issues found:"
+                    gofmt -s -d .
+                    exit 1
+                  fi
+
+            - name: Run go vet
+              run: go vet ./...
+
+            - name: Security scan with gosec
+              run: |
+                  go install github.com/securego/gosec/v2/cmd/gosec@latest
+                  gosec -fmt=json -out=gosec-report.json -no-fail ./...
+              continue-on-error: true
+
+    build-and-deploy:
+        name: Build & Deploy
+        needs: test
+        if: github.event_name == 'push'
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Configure AWS credentials
+              uses: aws-actions/configure-aws-credentials@v4
+              with:
+                  role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+                  aws-region: ${{ secrets.AWS_REGION }}
+
+            - name: Set environment variables
+              run: |
+                  if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+                    echo "ENVIRONMENT=production" >> $GITHUB_ENV
+                    echo "CODEDEPLOY_GROUP=${{ secrets.CODEDEPLOY_GROUP_PROD }}" >> $GITHUB_ENV
+                  else
+                    echo "ENVIRONMENT=staging" >> $GITHUB_ENV
+                    echo "CODEDEPLOY_GROUP=${{ secrets.CODEDEPLOY_GROUP_STAGING }}" >> $GITHUB_ENV
+                  fi
+
+            - name: Login to Amazon ECR
+              id: login-ecr
+              uses: aws-actions/amazon-ecr-login@v2
+
+            - name: Build Docker image
+              working-directory: Server/MuchToDo
+              env:
+                  ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+                  ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY_BACKEND }}
+                  IMAGE_TAG: ${{ github.sha }}
+              run: |
+                  docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+                  docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+                  docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.ENVIRONMENT }}
+
+            - name: Scan Docker image for vulnerabilities
+              env:
+                  ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+                  ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY_BACKEND }}
+                  IMAGE_TAG: ${{ github.sha }}
+              run: |
+                  docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+                    aquasec/trivy:latest image --severity HIGH,CRITICAL \
+                    $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+              continue-on-error: true
+
+            - name: Push Docker image to ECR
+              env:
+                  ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+                  ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY_BACKEND }}
+                  IMAGE_TAG: ${{ github.sha }}
+              run: |
+                  docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+                  docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+                  docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ env.ENVIRONMENT }}
+
+            - name: Create deployment package
+              run: |
+                  mkdir -p deployment
+                  cp appspec.yml deployment/
+                  cp -r scripts deployment/
+                  cd deployment
+                  zip -r ../deployment.zip .
+
+            - name: Upload to S3
+              run: |
+                  TIMESTAMP=$(date +%s)
+                  S3_KEY="${{ env.ENVIRONMENT }}/backend-${{ github.sha }}-${TIMESTAMP}.zip"
+                  aws s3 cp deployment.zip s3://${{ secrets.CODEDEPLOY_S3_BUCKET }}/${S3_KEY}
+                  echo "S3_KEY=${S3_KEY}" >> $GITHUB_ENV
+
+            - name: Create CodeDeploy deployment
+              id: deploy
+              run: |
+                  DEPLOYMENT_ID=$(aws deploy create-deployment \
+                    --application-name ${{ secrets.CODEDEPLOY_APP }} \
+                    --deployment-group-name ${{ env.CODEDEPLOY_GROUP }} \
+                    --s3-location bucket=${{ secrets.CODEDEPLOY_S3_BUCKET }},key=${{ env.S3_KEY }},bundleType=zip \
+                    --description "Deployment for commit ${{ github.sha }} to ${{ env.ENVIRONMENT }}" \
+                    --query 'deploymentId' \
+                    --output text)
+                  echo "deployment_id=${DEPLOYMENT_ID}" >> $GITHUB_OUTPUT
+                  echo "Deployment ID: ${DEPLOYMENT_ID}"
+
+            - name: Wait for deployment
+              run: |
+                  echo "Waiting for deployment ${{ steps.deploy.outputs.deployment_id }} to complete..."
+                  aws deploy wait deployment-successful \
+                    --deployment-id ${{ steps.deploy.outputs.deployment_id }}
+
+            - name: Run smoke tests
+              run: |
+                  echo "Running smoke tests against ${{ env.ENVIRONMENT }}..."
+                  MAX_RETRIES=5
+                  RETRY_COUNT=0
+
+                  if [ "${{ env.ENVIRONMENT }}" == "production" ]; then
+                    HEALTH_URL="${{ secrets.API_BASE_URL_PROD }}/health"
+                  else
+                    HEALTH_URL="${{ secrets.API_BASE_URL_STAGING }}/health"
+                  fi
+
+                  until [ $RETRY_COUNT -ge $MAX_RETRIES ]
+                  do
+                    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" $HEALTH_URL)
+                    if [ $HTTP_CODE -eq 200 ]; then
+                      echo "✅ Health check passed!"
+                      exit 0
+                    fi
+                    RETRY_COUNT=$((RETRY_COUNT+1))
+                    echo "Health check failed (attempt $RETRY_COUNT/$MAX_RETRIES). Retrying in 10s..."
+                    sleep 10
+                  done
+
+                  echo "❌ Health check failed after $MAX_RETRIES attempts"
+                  exit 1
+
+            - name: Deployment notification
+              if: success()
+              run: |
+                  echo "✅ Backend deployed successfully to ${{ env.ENVIRONMENT }}"
+                  echo "Deployment ID: ${{ steps.deploy.outputs.deployment_id }}"
+                  echo "Image: ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY_BACKEND }}:${{ github.sha }}"
+
+            - name: Deployment failure notification
+              if: failure()
+              run: |
+                  echo "❌ Backend deployment failed for ${{ env.ENVIRONMENT }}"
+                  echo "Consider rolling back deployment ${{ steps.deploy.outputs.deployment_id }}"
+                  exit 1
