@@ -1,0 +1,133 @@
+name: Frontend CI/CD
+
+on:
+    push:
+        branches:
+            - main
+            - develop
+        paths:
+            - "Client/**"
+            - ".github/workflows/frontend-ci-cd.yml"
+    pull_request:
+        branches:
+            - main
+            - develop
+        paths:
+            - "Client/**"
+
+permissions:
+    id-token: write
+    contents: read
+
+env:
+    NODE_VERSION: "20"
+
+jobs:
+    test:
+        name: Test & Lint
+        runs-on: ubuntu-latest
+        defaults:
+            run:
+                working-directory: Client
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: ${{ env.NODE_VERSION }}
+                  cache: "npm"
+                  cache-dependency-path: Client/package-lock.json
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Run linter
+              run: npm run lint
+
+            - name: Run tests
+              run: npm run test --if-present
+
+            - name: Security audit
+              run: npm audit --audit-level=high
+              continue-on-error: true
+
+    build:
+        name: Build & Deploy
+        needs: test
+        if: github.event_name == 'push'
+        runs-on: ubuntu-latest
+        defaults:
+            run:
+                working-directory: Client
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: ${{ env.NODE_VERSION }}
+                  cache: "npm"
+                  cache-dependency-path: Client/package-lock.json
+
+            - name: Configure AWS credentials
+              uses: aws-actions/configure-aws-credentials@v4
+              with:
+                  role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+                  aws-region: ${{ secrets.AWS_REGION }}
+
+            - name: Set environment variables
+              run: |
+                  if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+                    echo "ENVIRONMENT=production" >> $GITHUB_ENV
+                    echo "S3_BUCKET=${{ secrets.S3_BUCKET_PROD }}" >> $GITHUB_ENV
+                    echo "CLOUDFRONT_ID=${{ secrets.CLOUDFRONT_ID_PROD }}" >> $GITHUB_ENV
+                    echo "VITE_API_BASE_URL=${{ secrets.API_BASE_URL_PROD }}" >> $GITHUB_ENV
+                  else
+                    echo "ENVIRONMENT=staging" >> $GITHUB_ENV
+                    echo "S3_BUCKET=${{ secrets.S3_BUCKET_STAGING }}" >> $GITHUB_ENV
+                    echo "CLOUDFRONT_ID=${{ secrets.CLOUDFRONT_ID_STAGING }}" >> $GITHUB_ENV
+                    echo "VITE_API_BASE_URL=${{ secrets.API_BASE_URL_STAGING }}" >> $GITHUB_ENV
+                  fi
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Build application
+              run: npm run build
+              env:
+                  VITE_API_BASE_URL: ${{ env.VITE_API_BASE_URL }}
+
+            - name: Sync to S3
+              run: |
+                  aws s3 sync dist/ s3://${{ env.S3_BUCKET }} --delete \
+                    --cache-control "public, max-age=31536000, immutable" \
+                    --exclude "index.html" \
+                    --exclude "*.map"
+
+                  aws s3 cp dist/index.html s3://${{ env.S3_BUCKET }}/index.html \
+                    --cache-control "public, max-age=0, must-revalidate" \
+                    --content-type "text/html"
+
+            - name: Invalidate CloudFront cache
+              run: |
+                  aws cloudfront create-invalidation \
+                    --distribution-id ${{ env.CLOUDFRONT_ID }} \
+                    --paths "/*"
+
+            - name: Deployment notification
+              if: success()
+              run: |
+                  echo "✅ Frontend deployed successfully to ${{ env.ENVIRONMENT }}"
+                  echo "S3 Bucket: ${{ env.S3_BUCKET }}"
+                  echo "CloudFront Distribution: ${{ env.CLOUDFRONT_ID }}"
+
+            - name: Deployment failure notification
+              if: failure()
+              run: |
+                  echo "❌ Frontend deployment failed for ${{ env.ENVIRONMENT }}"
+                  exit 1
