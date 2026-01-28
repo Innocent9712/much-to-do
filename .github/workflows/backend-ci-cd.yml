@@ -1,0 +1,56 @@
+name: Backend CI/CD
+
+on:
+  push:
+    branches: [ main ]
+    paths: ['Server/**']
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write # Required to push to GHCR -oidc
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # 1. Security Scan
+      - name: Run Snyk to check for vulnerabilities
+        uses: snyk/actions/golang@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+      # 2. Login to GitHub Container Registry
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 3. Build and Push to GHCR
+      - name: Build and Push
+        run: |
+          # Convert repo name to lowercase for Docker compatibility
+          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          
+          docker build -t ghcr.io/$REPO_LOWER/backend:latest ./backend
+          docker tag ghcr.io/$REPO_LOWER/backend:latest ghcr.io/$REPO_LOWER/backend:${{ github.sha }}
+          
+          docker push ghcr.io/$REPO_LOWER/backend:latest
+          docker push ghcr.io/$REPO_LOWER/backend:${{ github.sha }}
+
+      # 4. AWS Auth (Still needed to tell AWS to refresh the servers)
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      # 5. Deploy: Trigger Rolling Update
+      - name: Trigger Rolling Update on ASG
+        run: |
+          aws autoscaling start-instance-refresh \
+            --auto-scaling-group-name starttech-backend-asg
