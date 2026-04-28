@@ -48,7 +48,7 @@ const usernameCacheTTL = 24 * time.Hour
 
 func main() {
 	// 1. Load Configuration
-	cfg, err := config.LoadConfig(".")
+	cfg, err := config.LoadConfig()
 	if err != nil {
 		log.Fatalf("could not load config: %v", err)
 	}

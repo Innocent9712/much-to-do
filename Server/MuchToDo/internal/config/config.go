@@ -19,26 +19,17 @@ type Config struct {
 }
 
 // LoadConfig reads configuration from file or environment variables.
-func LoadConfig(path string) (config Config, err error) {
-	viper.AddConfigPath(path)
-	viper.SetConfigName(".env")
-	viper.SetConfigType("env")
+func LoadConfig() (config Config, err error) {
+    viper.AutomaticEnv()
 
-	viper.AutomaticEnv()
+	viper.BindEnv("MONGO_URI")
+    viper.BindEnv("DB_NAME")
 
-	// Set default values
-	viper.SetDefault("PORT", "8080")
-	viper.SetDefault("ENABLE_CACHE", false)
-	viper.SetDefault("JWT_EXPIRATION_HOURS", 72)
+    // Defaults (optional but good)
+    viper.SetDefault("PORT", "8080")
+    viper.SetDefault("DB_NAME", "muchtodo")
 
-	err = viper.ReadInConfig()
-	if err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-			return
-		}
-	}
-
-	err = viper.Unmarshal(&config)
-	return
+    err = viper.Unmarshal(&config)
+    return
 }
 
