@@ -1,0 +1,14 @@
+.git
+.github
+node_modules
+tmp
+logs
+*.log
+.env
+.env.*
+Dockerfile
+docker-compose.yml
+kubernetes
+scripts
+evidence
+README.md
