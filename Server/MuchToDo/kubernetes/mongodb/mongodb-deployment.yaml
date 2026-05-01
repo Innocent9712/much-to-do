@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongodb
+  namespace: muchtodo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongodb
+  template:
+    metadata:
+      labels:
+        app: mongodb
+    spec:
+      containers:
+        - name: mongodb
+          image: mongo:8.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 27017
+          env:
+            - name: MONGO_INITDB_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-secret
+                  key: MONGO_INITDB_DATABASE
+          volumeMounts:
+            - name: mongodb-storage
+              mountPath: /data/db
+      volumes:
+        - name: mongodb-storage
+          persistentVolumeClaim:
+            claimName: mongodb-pvc

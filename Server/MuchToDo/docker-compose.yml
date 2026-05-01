@@ -1,0 +1,55 @@
+services:
+  mongodb:
+    image: mongo:8.0
+    container_name: muchtodo-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: much_todo_db
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - muchtodo-network
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval 'db.adminCommand({ ping: 1 }).ok' | grep 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: muchtodo-backend:latest
+    container_name: muchtodo-backend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - MONGO_URI=mongodb://mongodb:27017/much_todo_db
+      - DB_NAME=much_todo_db
+      - JWT_SECRET_KEY=local-dev-secret
+      - JWT_EXPIRATION_HOURS=72
+      - LOG_LEVEL=DEBUG
+      - LOG_FORMAT=text
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - muchtodo-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health | grep database"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  mongodb_data:
+
+networks:
+  muchtodo-network:
+    driver: bridge
