@@ -1,0 +1,53 @@
+services:
+  mongodb:
+    image: mongo:8.0
+    container_name: mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+      MONGO_INITDB_DATABASE: much_todo_db
+    command:
+      [
+        "--replSet", "rs0",
+        "--bind_ip_all",
+        "--keyFile", "/data/keyfile/mongodb.key"
+      ]
+    volumes:
+      - mongo_data:/data/db
+      - mongodb_config:/data/configdb
+      - ./mongodb.key:/data/keyfile/mongodb.key:ro
+    healthcheck:
+      test: echo "try { rs.status() } catch (err) { rs.initiate({_id:'rs0',members:[{_id:0,host:'mongodb:27017'}]}) }" | mongosh --port 27017 -u root -p example --authenticationDatabase admin --quiet
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    networks:
+      - backend
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: muchtodo-backend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./.env.docker:/app/.env
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - backend
+
+volumes:
+  mongo_data:
+  mongodb_config:
+
+networks:
+  backend:
+    driver: bridge

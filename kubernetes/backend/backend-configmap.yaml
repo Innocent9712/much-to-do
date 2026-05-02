@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+  namespace: muchtodo
+data:
+  PORT: "8080"
+  MONGO_DB: "muchtodo"

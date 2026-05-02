@@ -1,0 +1,8 @@
+.git
+.gitignore
+*.md
+evidence/
+kubernetes/
+scripts/
+.env
+Server/MuchToDo/.env
