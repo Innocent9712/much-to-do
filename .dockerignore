@@ -1,0 +1,44 @@
+# Git
+.git
+.gitignore
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Kubernetes
+kubernetes/
+
+# Scripts
+scripts/
+
+# Evidence
+evidence/
+
+# Docs
+*.md
+README.md
+
+# Test files
+*_test.go
+*.test
+
+# IDE & OS files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# MongoDB keyfile 
+mongodb.key
+
+# Binary output
+/bin/
