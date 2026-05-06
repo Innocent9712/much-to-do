@@ -101,7 +101,7 @@ services:
       - "${PORT:-8080}:8080"
     environment:
       PORT: ${PORT:-8080}
-      MONGO_URI: mongodb://${MONGO_INITDB_ROOT_USERNAME:-root}:${MONGO_INITDB_ROOT_PASSWORD:-example}@mongodb:27017/${DB_NAME:-much_todo_db}?authSource=admin&replicaSet=rs0&directConnection=true
+      MONGO_URI: "mongodb://${MONGO_INITDB_ROOT_USERNAME:-root}:${MONGO_INITDB_ROOT_PASSWORD:-example}@mongodb:27017/${DB_NAME:-much_todo_db}?authSource=admin&replicaSet=rs0&directConnection=true"
       DB_NAME: ${DB_NAME:-much_todo_db}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-your-super-secret-key-that-is-long-and-random}
       JWT_EXPIRATION_HOURS: ${JWT_EXPIRATION_HOURS:-72}
