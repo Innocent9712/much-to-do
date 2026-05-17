@@ -1,0 +1,9 @@
+# .dockerignore
+.git
+.gitignore
+*.md
+kubernetes/
+scripts/
+docker-compose.yaml
+*.test
+coverage.out
