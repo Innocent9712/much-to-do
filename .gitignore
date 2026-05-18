@@ -35,4 +35,6 @@ go.work.sum
 docker-compose.test.yaml
 mongodb.key
 mongo-keyfile
+*.local.yaml
+mongodb.key
 

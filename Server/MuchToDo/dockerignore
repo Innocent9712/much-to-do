@@ -1,0 +1,10 @@
+.git
+.github
+docs
+evidence
+kubernetes
+scripts
+*.log
+.env
+tmp
+coverage

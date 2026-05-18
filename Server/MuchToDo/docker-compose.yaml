@@ -10,25 +10,18 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-example}
       MONGO_INITDB_DATABASE: ${DB_NAME:-much_todo_db}
     # Use a command that sets permissions and then starts mongod
-    command:
-      [
-        "--replSet",
-        "rs0",
-        "--bind_ip_all",
-        "--keyFile",
-        "/data/keyfile/mongodb.key",
-      ]
+  
     # Create a keyfile and mount it to the container
     # openssl rand -base64 756 > mongodb.key && chmod 400 mongodb.key
     volumes:
       - mongo_data:/data/db
       - mongodb_config:/data/configdb
       # Mount the keyfile to a standard config location
-      - ./mongodb.key:/data/keyfile/mongodb.key:ro
+  
     healthcheck:
-      test: echo "try { rs.status() } catch (err) { rs.initiate({_id:'rs0',members:[{_id:0,host:'${MONGO_HOST:-mongodb}:27017'}]}) }" | mongosh --port 27017 -u ${MONGO_INITDB_ROOT_USERNAME:-root} -p ${MONGO_INITDB_ROOT_PASSWORD:-example} --authenticationDatabase admin --quiet
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 10s
-      timeout: 10s
+      timeout: 5s
       retries: 5
       start_period: 40s
     networks:
