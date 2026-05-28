@@ -152,6 +152,10 @@ jobs:
             ASG_NAME=${{ secrets.AUTO_SCALING_GROUP_NAME }}
           fi
           
+          # Cancel any existing in-progress refresh so the latest push can deploy immediately
+          echo "Checking and canceling any in-progress instance refresh for ASG: $ASG_NAME..."
+          aws autoscaling cancel-instance-refresh --auto-scaling-group-name "$ASG_NAME" 2>/dev/null && echo "Cancelled existing refresh." || echo "No active instance refresh to cancel or cancel skipped."
+          
           echo "Starting Instance Refresh for ASG: $ASG_NAME"
           
           # Start instance refresh (rolling update)
