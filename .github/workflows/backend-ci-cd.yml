@@ -1,0 +1,193 @@
+name: Backend CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-ci-cd.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-ci-cd.yml'
+
+jobs:
+  test-and-scan:
+    name: Test and Security Scan
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+          cache: true
+          cache-dependency-path: backend/go.sum
+
+      - name: Install Dependencies
+        run: go mod download
+
+      - name: Format Go Code
+        run: gofmt -w .
+
+      - name: Run Go Vet
+        run: go vet ./...
+
+      - name: Vulnerability Scan (Source Code)
+        uses: golang/govulncheck-action@v1
+        with:
+          work-dir: './backend'
+        continue-on-error: true # Warning only
+
+      - name: Run Unit & Integration Tests
+        env:
+          INTEGRATION: "true"
+        run: |
+          # The integration tests use testcontainers-go to spin up MongoDB and Redis on the Docker daemon of the runner
+          go test -tags=integration -v ./...
+
+  build-and-push:
+    name: Build & ECR Push
+    needs: test-and-scan
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
+
+      - name: Log in to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set ECR Repository URL
+        run: |
+          # Clean secret input and strip any whitespace/carriage returns
+          ECR_REPO=$(echo "${{ secrets.ECR_REPOSITORY }}" | tr -d '[:space:]')
+          if [ -z "$ECR_REPO" ]; then
+            ECR_REPO="${{ steps.login-ecr.outputs.registry }}/starttech-backend-${{ secrets.ENVIRONMENT || 'prod' }}"
+          fi
+          echo "ECR_REPO=$ECR_REPO" >> $GITHUB_ENV
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          load: true
+          tags: ${{ env.ECR_REPO }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Scan Docker Image (Trivy)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.ECR_REPO }}:${{ github.sha }}
+          format: 'table'
+          exit-code: '0' # Warn but do not break builds for package updates (trivy exit-code '1' would fail)
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Push Docker Image to ECR
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.ECR_REPO }}:${{ github.sha }}
+            ${{ env.ECR_REPO }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: Auto Scaling Group Rolling Deploy
+    needs: build-and-push
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
+
+      - name: Update SSM Parameter Store with New Tag
+        run: |
+          aws ssm put-parameter \
+            --name "/starttech/backend/image_tag" \
+            --value "${{ github.sha }}" \
+            --type "String" \
+            --overwrite
+
+      - name: Trigger Auto Scaling Group Instance Refresh (Rolling Update)
+        run: |
+          # Fetch the Auto Scaling Group name dynamically or from secrets
+          ASG_NAME=$(aws autoscaling describe-auto-scaling-groups --query "AutoScalingGroups[?contains(AutoScalingGroupName, 'techcorp-backend')].AutoScalingGroupName" --output text || echo "")
+          if [ -z "$ASG_NAME" ]; then
+            echo "ASG name not found automatically. Using backup secret value."
+            ASG_NAME=${{ secrets.AUTO_SCALING_GROUP_NAME }}
+          fi
+          
+          # Cancel any existing in-progress refresh so the latest push can deploy immediately
+          echo "Checking and canceling any in-progress instance refresh for ASG: $ASG_NAME..."
+          aws autoscaling cancel-instance-refresh --auto-scaling-group-name "$ASG_NAME" 2>/dev/null && echo "Cancelled existing refresh." || echo "No active instance refresh to cancel or cancel skipped."
+          
+          echo "Starting Instance Refresh for ASG: $ASG_NAME"
+          
+          # Start instance refresh (rolling update)
+          REFRESH_ID=$(aws autoscaling start-instance-refresh \
+            --auto-scaling-group-name "$ASG_NAME" \
+            --preferences '{"MinHealthyPercentage": 50, "InstanceWarmup": 300}' \
+            --query "InstanceRefreshId" --output text)
+            
+          echo "Instance Refresh initiated with ID: $REFRESH_ID"
+          echo "ASG_REFRESH_ID=$REFRESH_ID" >> $GITHUB_ENV
+          echo "ASG_NAME=$ASG_NAME" >> $GITHUB_ENV
+
+      - name: Run Post-Deploy Smoke Test & Health Check
+        run: |
+          # Fetch ALB DNS Name
+          ALB_DNS=$(aws elbv2 describe-load-balancers --names "techcorp-backend-alb" --region ${{ secrets.AWS_REGION || 'us-east-1' }} --query "LoadBalancers[0].DNSName" --output text 2>/dev/null || echo "")
+          if [ -n "$ALB_DNS" ]; then
+            echo "Running health checks against ALB: http://$ALB_DNS/health"
+            # Wait for instances to roll and run the health check loop
+            chmod +x scripts/health-check.sh
+            ./scripts/health-check.sh "http://$ALB_DNS" 10 30
+          else
+            echo "ALB not provisioned or access issues. Skipping live smoke tests."
+          fi
+
+      - name: Send Deployment Status Notification
+        if: always()
+        run: |
+          if [ -n "${{ secrets.SLACK_WEBHOOK_URL }}" ]; then
+            curl -X POST -H 'Content-type: application/json' \
+              --data '{"text":"🚀 *StartTech Backend Deployment Completed!* \nASG Instance Refresh Triggered. Status: ${{ job.status }}"}' \
+              ${{ secrets.SLACK_WEBHOOK_URL }}
+          else
+            echo "Notification skipped (no SLACK_WEBHOOK_URL secret)."
+          fi
