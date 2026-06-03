@@ -1,0 +1,9 @@
+.git
+.vscode
+.env
+bin
+tmp
+*.log
+Dockerfile
+docker-compose.yml
+README.md
