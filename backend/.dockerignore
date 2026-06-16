@@ -1,0 +1,73 @@
+# Git
+.git
+.gitignore
+
+# Docker files
+Dockerfile
+.dockerignore
+docker-compose.yml
+
+# Kubernetes
+kubernetes/
+
+# Scripts
+scripts/
+
+# Evidence
+evidence/
+
+# README
+README.md
+
+# Local build artifacts
+MuchToDo/bin/
+MuchToDo/*.exe
+MuchToDo/much-to-do
+
+# Editor/OS
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+MuchToDo/.env # this prevents go from /MuchTodo from using the default .env
+
+# Git
+.git
+.gitignore
+
+# Docker files
+Dockerfile
+.dockerignore
+docker-compose.yml
+
+# Kubernetes
+kubernetes/
+
+# Scripts
+scripts/
+
+# Evidence
+evidence/
+
+# README
+README.md
+
+# Local build artifacts
+MuchToDo/bin/
+MuchToDo/*.exe
+MuchToDo/much-to-do
+
+# Environment files - DO NOT copy into image
+MuchToDo/.env
+
+# Editor/OS
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db

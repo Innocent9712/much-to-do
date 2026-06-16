@@ -1,0 +1,16 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: muchtodo-backend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - MONGO_URI=${MONGO_URI}
+      - REDIS_ADDR=${REDIS_ADDR}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - DB_NAME=much_todo_db
+      - ENABLE_CACHE=true

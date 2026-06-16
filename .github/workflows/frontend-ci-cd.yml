@@ -1,0 +1,109 @@
+name: Frontend CI/CD
+
+on:
+  push:
+    branches: [master, feature/containers]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend-ci-cd.yml'
+  pull_request:
+    branches: [master]
+    paths:
+      - 'frontend/**'
+
+env:
+  NODE_VERSION: '22.x'
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  S3_BUCKET: ${{ vars.FRONTEND_S3_BUCKET }}
+  CLOUDFRONT_ID: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
+  CLOUDFRONT_DOMAIN: ${{ secrets.CLOUDFRONT_DOMAIN }}
+
+jobs:
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Run Linter
+        working-directory: ./frontend
+        run: npm run lint || true
+
+      - name: Security Audit
+        working-directory: ./frontend
+        run: npm audit --audit-level=moderate || true
+
+      - name: Build Production Bundle
+        working-directory: ./frontend
+        run: npm run build
+        env:
+          VITE_API_BASE_URL: "http://${{ vars.ALB_DNS_NAME }}"
+
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: frontend/dist/
+          retention-days: 5
+
+  deploy:
+    name: Deploy to S3
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: github.ref == 'refs/heads/master'
+    environment: production
+    permissions:
+      id-token: write
+      contents: read
+    
+    steps:
+      - name: Download Build Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-build
+          path: dist/
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy to S3
+        run: |
+          aws s3 sync dist/ s3://${{ env.S3_BUCKET }} \
+            --delete \
+            --cache-control "max-age=31536000,immutable" \
+            --exclude "index.html"
+          
+          aws s3 cp dist/index.html s3://${{ env.S3_BUCKET }}/index.html \
+            --cache-control "no-cache, no-store, must-revalidate"
+
+      - name: Invalidate CloudFront Cache
+        run: |
+          if [ -n "${{ env.CLOUDFRONT_ID }}" ] && [ "${{ env.CLOUDFRONT_ID }}" != "disabled" ]; then
+            aws cloudfront create-invalidation \
+              --distribution-id ${{ env.CLOUDFRONT_ID }} \
+              --paths "/index.html" "/*"
+          else
+            echo "CloudFront ID is empty or disabled. Skipping invalidation."
+          fi
+
+      - name: Verify Deployment
+        run: |
+          echo "Checking CloudFront domain..."
+          curl -sfI https://${{ env.CLOUDFRONT_DOMAIN }}/index.html || true
